@@ -13,13 +13,26 @@ const getUsers = async (request, response) => {
     response.status(500).json({ error: error.message })
   }
 }
+// GET user count
+const getUserCount = async (request, response) => {
+  try {
+    const results = await pool.query('SELECT COUNT(*) FROM users')
+    const count = parseInt(results.rows[0].count)
+    response.status(200).json({count})
+  } catch (error) {
+    response.status(500).json({ error: error.message })
+  }
+}
 
 // GET a single user by ID
 const getUserById = async (request, response) => {
   const id = parseInt(request.params.id)
   try {
     const results = await pool.query('SELECT * FROM users WHERE id = $1', [id])
-    response.status(200).json(results.rows)
+    if (results.rows.length === 0) {
+      return response.status(404).json({ error: `No user found with ID: ${id}` })
+    }
+    response.status(200).json(results.rows[0])
   } catch (error) {
     response.status(500).json({ error: error.message })
   }
@@ -29,6 +42,9 @@ const getUserById = async (request, response) => {
 // Note: RETURNING * is required — PostgreSQL does not have results.insertId (that's MySQL)
 const createUser = async (request, response) => {
   const { name, email } = request.body
+  if(!name || !email ){
+    return response.status(400).json({ error: 'name and email are both required' })
+  }
   try {
     const results = await pool.query(
       'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
@@ -68,6 +84,7 @@ const deleteUser = async (request, response) => {
 
 module.exports = {
   getUsers,
+  getUserCount,
   getUserById,
   createUser,
   updateUser,
